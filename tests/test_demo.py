@@ -18,15 +18,6 @@ import sq_demo                                                  # noqa: E402
 from sq_demo import portfolio                                   # noqa: E402
 from sq_schema import TransactionType, conformance              # noqa: E402
 
-# sq_platform is the interactive APP layer — present in the mono workspace, absent
-# from a standalone connector install (a connector must NOT depend on the app).
-# App-level aggregation tests skip when it isn't importable.
-try:
-    import sq_platform  # noqa: F401
-    _HAVE_PLATFORM = True
-except ImportError:
-    _HAVE_PLATFORM = False
-
 ASOF = datetime(2026, 6, 1, tzinfo=timezone.utc)
 
 
@@ -78,28 +69,11 @@ class TestDemoSnapshot(unittest.TestCase):
         self.assertTrue(sq_demo.DEMO)
 
 
-@unittest.skipUnless(_HAVE_PLATFORM, "sq-platform (app layer) not installed standalone")
-class TestVoidFill(unittest.TestCase):
-    """The PLATFORM owns when demo participates (the bundle can't know
-    about other brokers). Environment-independent: assert the invariant,
-    not a fixed outcome."""
-
-    def test_auto_means_demo_only_when_alone(self):
-        from sq_platform import aggregated as ag
-        found = ag._discover_brokers(HERE.parents[2])
-        demo = [lb for lb, _ in found if lb.split(":")[0] == "demo"]
-        real = [lb for lb, _ in found if lb.split(":")[0] != "demo"]
-        if real:
-            self.assertEqual(demo, [], "demo must vanish once real "
-                                       "accounts are connected (auto)")
-        else:
-            self.assertEqual(demo, ["demo:sample"],
-                             "demo must fill the void when nothing is "
-                             "connected")
-
-    def test_demo_never_in_connect_menu(self):
-        from sq_platform import aggregated as ag
-        self.assertNotIn("demo", ag._available_connectors(HERE.parents[2]))
+# NOTE: the demo's "void-fill" behaviour (demo shows only when no real account is
+# connected; demo never appears in the connect menu) is the PLATFORM's decision and
+# is tested in the app repo (sciqnt/sciqnt) — not here. It depends on the demo being
+# an installed, *discoverable* bundle, which is only true AFTER this conformance
+# suite passes, so it cannot live in the connector's own pre-install conformance.
 
 
 if __name__ == "__main__":
