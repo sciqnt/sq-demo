@@ -2,8 +2,9 @@
 
 The demo portfolio is sciqnt's PUBLIC FACE (first-run experience, docs,
 screenshots) — these tests pin the properties that make that safe:
-same figures forever (seeded), schema-clean, no network, and the
-platform's void-fill rule (demo only while nothing real is connected).
+same figures forever (seeded), schema-clean, no network. (The platform's
+void-fill rule — demo only while nothing real is connected — is the app's
+to test; see the NOTE below.)
 """
 import sys
 import unittest
@@ -71,9 +72,12 @@ class TestDemoSnapshot(unittest.TestCase):
 
 # NOTE: the demo's "void-fill" behaviour (demo shows only when no real account is
 # connected; demo never appears in the connect menu) is the PLATFORM's decision and
-# is tested in the app repo (sciqnt/sciqnt) — not here. It depends on the demo being
-# an installed, *discoverable* bundle, which is only true AFTER this conformance
-# suite passes, so it cannot live in the connector's own pre-install conformance.
+# is tested in the app repo:
+#   sciqnt/sciqnt → core/tests/test_void_fill.py :: TestDemoVoidFill
+# (the rule is `sq_platform.aggregated._apply_demo_void_fill`). It can't live here:
+# it reaches into app internals (P11 — a connector must not depend on the app) and
+# needs the demo to be a *discoverable* bundle, only true AFTER this conformance
+# passes — a chicken-and-egg the pre-install gate can't satisfy.
 
 
 if __name__ == "__main__":
