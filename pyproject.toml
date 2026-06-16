@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sciqnt-demo"
+version = "0.0.1"
+description = "sciqnt deterministic demo portfolio — synthetic, seeded, offline"
+readme = "FINDINGS.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = [
+    "sciqnt-compute @ git+https://github.com/sciqnt/sq-compute@v0.1.0",
+    "sciqnt-schema @ git+https://github.com/sciqnt/sq-schema@v0.1.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+

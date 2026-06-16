@@ -1,0 +1,13 @@
+# Copy to <component>/.github/workflows/ci.yml — the mechanical gate, inherited.
+name: ci
+on:
+  push: { branches: [main] }
+  pull_request:
+jobs:
+  ci:
+    uses: sciqnt/sq-constitution/.github/workflows/ci.yml@v1
+    # Override install/test only if the repo isn't a standard `pip install -e .`
+    # + `python -m unittest discover -s tests` layout:
+    # with:
+    #   install: "pip install -e .[live]"
+    #   test: "./run_tests.sh"

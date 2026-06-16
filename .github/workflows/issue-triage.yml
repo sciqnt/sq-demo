@@ -1,0 +1,14 @@
+# Copy to <component>/.github/workflows/issue-triage.yml — iterative triage, inherited.
+name: issue-triage
+on:
+  issues: { types: [opened] }
+  issue_comment: { types: [created] }
+jobs:
+  triage:
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      id-token: write
+    uses: sciqnt/sq-constitution/.github/workflows/issue-triage.yml@v1
+    secrets: inherit

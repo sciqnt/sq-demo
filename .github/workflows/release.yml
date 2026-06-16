@@ -1,0 +1,12 @@
+# Copy to <component>/.github/workflows/release.yml — publishes to PyPI on a
+# GitHub Release, via OIDC trusted publishing (no stored secret). One-time PyPI
+# trusted-publisher setup per distribution; see the reusable's header.
+name: release
+on:
+  release:
+    types: [published]
+jobs:
+  release:
+    uses: sciqnt/sq-constitution/.github/workflows/release.yml@v1
+    permissions:
+      id-token: write          # REQUIRED at the caller for OIDC trusted publishing

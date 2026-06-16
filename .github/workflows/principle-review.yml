@@ -1,0 +1,16 @@
+# Copy to <component>/.github/workflows/principle-review.yml — the judgment gate +
+# auto-merge-on-aligned, inherited. Requires the CLAUDE_CODE_OAUTH_TOKEN org secret.
+# The job MUST grant the permissions the reusable needs — a called workflow can't get
+# more than the caller job grants, and the repo default token is read-only.
+name: principle-review
+on:
+  pull_request_target:
+    types: [opened, reopened, ready_for_review, synchronize]
+jobs:
+  review:
+    permissions:
+      contents: write          # enable auto-merge on an aligned verdict
+      pull-requests: write     # post the review + inline comments
+      id-token: write          # OIDC for the action
+    uses: sciqnt/sq-constitution/.github/workflows/principle-review.yml@v1
+    secrets: inherit
