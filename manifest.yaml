@@ -4,9 +4,9 @@ kind: demo
 risk_tier: none              # synthetic data only; no credentials, no network
 status: v1
 schema_version: 0
-identifiers: [ticker]        # fictional (SWRD/SQTC/SBND) — resolve nowhere, by design
+identifiers: [ticker]        # fictional tickers — resolve nowhere, by design
 broker: demo
-asset_classes: [ETF, STOCK]
+asset_classes: [ETF, STOCK, BOND, CRYPTO]
 flavours:
   synthetic:
     risk: none
