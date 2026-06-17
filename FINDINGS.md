@@ -5,11 +5,15 @@ priced by the REAL engine — its "quirks" are design decisions.
 
 - **Personas, not synthetic walks (REWRITE 2026-06-17, supersedes the old
   EUR-only seeded-walk + 3-account designs):** five characters — 🐂 The Bull,
-  🐻 The Bear, 🦍 The Crypto Bro, 📉 The Unlucky, 🧘 The Boglehead — each a
-  transaction history on REAL tickers (AAPL, BTC-USD, VWRL.L, …). One is chosen at
-  RANDOM each launch (`random.choice`, process-lifetime) while no real account is
-  connected. The persona's *character* is its entry timing/choices; the live
-  market scores it.
+  🐻 The Bear, 🦍 The Crypto Bro, 📉 The Unlucky, 🧘 The Boglehead — each a PERSON
+  with **2–3 broker accounts** (punny stand-ins for real brokers: Robberhood,
+  Interactive Crokers, Coinvase, Bye-nance, Monomarket, Rearguard, Infidelity,
+  Webully, Schwob) holding REAL tickers (AAPL, BTC-USD, VWRL.L, …). One persona is
+  chosen at RANDOM each launch (`random.choice`, process-lifetime) while no real
+  account is connected; its accounts aggregate into the Portfolio (some span
+  currencies — e.g. the Boglehead's GBP + USD accounts — to exercise FX rollup).
+  Account labels can repeat across personas (only one persona is active per
+  launch); `build_snapshot(..., persona=)` is the test seam to reach any of them.
 - **Live prices via the platform, baked fallback in the bundle:** the bundle holds
   NO live prices and makes NO network call — it marks positions to a baked recent
   level (`_NOW`) so it always renders + conformance runs offline. The PLATFORM's
