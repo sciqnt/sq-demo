@@ -1,27 +1,23 @@
-"""sq-demo — the deterministic demo portfolio (sciqnt's public face).
+"""sq-demo — the demo portfolio: real products, real engine, five personas.
 
-Activates ONLY while no real account is connected (the platform's void-fill
-rule; config `demo_mode`: auto|on|off). Fully synthetic, fully deterministic —
-fictional instruments, seeded price walks, scripted multi-year histories. These
-ARE the public figures: every screenshot, doc, and first-run screen renders from
-here, never from anyone's real finances.
-
-THREE accounts in THREE currencies (EUR/USD/GBP) so the first-run screen shows
-cross-account, cross-currency aggregation — the platform converts each into the
-portfolio base via the FX provider.
+Each persona is a curated transaction history on REAL tickers; sciqnt's actual
+market-data pipeline prices it LIVE (the demo holds no synthetic prices). A
+different persona is chosen at random each launch while no real account is
+connected (the platform's void-fill rule decides participation). Cost basis is
+baked from realistic entry levels (robust, always renders); current value + P/L
+are live. See `portfolio.py` for the determinism trade-off.
 
 Discovery contract (same as every broker bundle):
-  * `accounts()` — the demo account ids; the PLATFORM decides whether the demo
-    participates (it can't know about other brokers — modularity).
-  * `snapshot(asof=None, *, account=None)` — conformance-clean snapshot for one
-    account at the seeded walk's prices; `asof` supported (PIT-correct).
-  * `load_history(account=None)` — that account's canonical transaction stream
-    (charts / TWR / XIRR / flows all derive from it, same as a broker).
+  * `accounts()` — this launch's persona label; the platform shows `demo:<label>`.
+  * `snapshot(asof=None, *, account=None)` — positions on real tickers, priced at
+    cost; the platform's overlay marks them to live by ticker.
+  * `load_history(account=None)` — the persona's transaction stream.
+  * `current_persona()` — name/emoji/tagline for the home banner.
 """
 from datetime import datetime
 from typing import Optional
 
-from .portfolio import accounts, build_snapshot, transactions
+from .portfolio import accounts, build_snapshot, current_persona, transactions
 
 DEMO = True                       # the platform's marker for void-fill
 
@@ -34,4 +30,4 @@ def load_history(account: Optional[str] = None):
     return transactions(account=account)
 
 
-__all__ = ["snapshot", "accounts", "load_history", "DEMO"]
+__all__ = ["snapshot", "accounts", "load_history", "current_persona", "DEMO"]
