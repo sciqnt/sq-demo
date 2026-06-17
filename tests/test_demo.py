@@ -1,11 +1,12 @@
-"""sq-demo contract: deterministic, conformance-clean, offline, multi-account.
+"""sq-demo contract: five personas on REAL tickers, conformance-clean, offline.
 
-The demo portfolio is sciqnt's PUBLIC FACE (first-run experience, docs,
-screenshots) — these tests pin the properties that make that safe: same figures
-forever (seeded), schema-clean, no network. Three accounts in three currencies
-(EUR/USD/GBP) so the first-run screen showcases cross-account, cross-currency
-aggregation. (The platform's void-fill rule is the app's to test — see the NOTE.)
+The demo is now real transactions on real tickers, priced LIVE by the platform's
+market-data overlay. The CONNECTOR itself stays offline + deterministic: it marks
+positions to a baked fallback price (the live overlay is the platform's job, not
+the bundle's), so these tests need no network. A different persona is chosen at
+random each launch — so we test the SET of personas, not a fixed one.
 """
+import re
 import sys
 import unittest
 from datetime import datetime, timezone
@@ -16,90 +17,88 @@ sys.path.insert(0, str(HERE.parents[2] / "core"))
 sys.path.insert(0, str(HERE.parents[0] / "src"))
 
 import sq_demo                                                  # noqa: E402
-from sq_demo import portfolio                                   # noqa: E402
-from sq_schema import TransactionType, conformance              # noqa: E402
+import sq_demo.portfolio as P                                  # noqa: E402
+from sq_schema import TransactionType, conformance             # noqa: E402
 
 ASOF = datetime(2026, 6, 1, tzinfo=timezone.utc)
+_TICKER = re.compile(r"^[A-Z]{1,6}(-USD)?(\.[A-Z])?$")          # AAPL, BTC-USD, VWRL.L
 
 
 class TestDiscoveryContract(unittest.TestCase):
-    def test_three_named_accounts(self):
-        self.assertEqual(sq_demo.accounts(), ["growth", "usa", "trading"])
-        self.assertTrue(callable(sq_demo.snapshot))
-        self.assertTrue(callable(sq_demo.load_history))
-        self.assertTrue(sq_demo.DEMO)
+    def test_five_personas(self):
+        self.assertEqual(set(P.PERSONAS), {"bull", "bear", "crypto", "unlucky", "boglehead"})
 
-    def test_accounts_span_three_currencies(self):
-        ccys = {sq_demo.snapshot(account=a).account.base_currency
-                for a in sq_demo.accounts()}
-        self.assertEqual(ccys, {"EUR", "USD", "GBP"})
+    def test_accounts_is_the_chosen_persona(self):
+        accts = sq_demo.accounts()
+        self.assertEqual(len(accts), 1)
+        self.assertIn(accts[0], P.PERSONAS)
 
-    def test_account_label_resolves_bare_or_full(self):
-        # the platform passes the bare label back; full id also works
-        self.assertEqual(portfolio._resolve("growth"), "demo:growth")
-        self.assertEqual(portfolio._resolve("demo:growth"), "demo:growth")
+    def test_current_persona_metadata(self):
+        meta = sq_demo.current_persona()
+        self.assertIn(meta["id"], P.PERSONAS)
+        self.assertTrue(meta["name"] and meta["emoji"] and meta["tagline"])
+
+    def test_resolve_bare_or_full(self):
+        self.assertEqual(P._resolve("bull"), "bull")
+        self.assertEqual(P._resolve("demo:bull"), "bull")
 
 
-class TestEveryAccountConforms(unittest.TestCase):
+class TestEveryPersona(unittest.TestCase):
     def test_conformance_clean_now_and_pit(self):
-        for acct in sq_demo.accounts():
-            self.assertEqual(conformance.check_snapshot(sq_demo.snapshot(account=acct)), [],
-                             f"{acct} snapshot not conformance-clean")
-            self.assertEqual(conformance.check_snapshot(sq_demo.snapshot(account=acct, asof=ASOF)), [],
-                             f"{acct} PIT snapshot not conformance-clean")
+        for name in P.PERSONAS:
+            self.assertEqual(conformance.check_snapshot(P.build_snapshot(name)), [],
+                             f"{name} not conformance-clean")
+            self.assertEqual(conformance.check_snapshot(P.build_snapshot(name, asof=ASOF)), [],
+                             f"{name} PIT not conformance-clean")
 
-    def test_history_is_rich(self):
-        # the growth account exercises every transaction kind (incl. realised sells)
-        txns = sq_demo.load_history(account="growth")
-        types = {t.type for t in txns}
-        for needed in (TransactionType.DEPOSIT, TransactionType.BUY,
-                       TransactionType.SELL, TransactionType.DIVIDEND):
-            self.assertIn(needed, types)
-        self.assertTrue(any(t.fee for t in txns))
+    def test_holdings_are_real_tickers(self):
+        for name in P.PERSONAS:
+            snap = P.build_snapshot(name)
+            for inst in snap.instruments:
+                tk = inst.identifiers["ticker"]
+                self.assertRegex(tk, _TICKER, f"{name}: {tk!r} doesn't look like a real ticker")
+                self.assertIn(tk, P._NOW, f"{name}: {tk} has no fallback price in _NOW")
 
-    def test_transaction_ids_unique_across_accounts(self):
-        ids = [t.transaction_id for a in sq_demo.accounts()
-               for t in sq_demo.load_history(account=a)]
-        self.assertEqual(len(ids), len(set(ids)), "transaction ids collide across accounts")
+    def test_history_on_real_tickers(self):
+        for name in P.PERSONAS:
+            txns = P.transactions(name)
+            self.assertTrue(any(t.type == TransactionType.DEPOSIT for t in txns))
+            self.assertTrue(any(t.type == TransactionType.BUY for t in txns))
+
+    def test_transaction_ids_unique_across_personas(self):
+        ids = [t.transaction_id for n in P.PERSONAS for t in P.transactions(n)]
+        self.assertEqual(len(ids), len(set(ids)))
 
 
-class TestShowcaseProperties(unittest.TestCase):
-    def test_trading_has_a_closed_position_with_realised_pl(self):
-        snap = sq_demo.snapshot(account="trading", asof=ASOF)
-        closed = [p for p in snap.positions if not p.is_open]
-        self.assertTrue(closed, "trading account should have a fully-closed position")
-        self.assertTrue(any(p.realized_pl_base != 0 for p in closed),
-                        "the closed position should carry realised P/L")
+class TestPersonaCharacter(unittest.TestCase):
+    """The baked fallback (overridden by live) gives each persona its character."""
+    def _upl(self, name):
+        snap = P.build_snapshot(name)
+        return sum((p.unrealized_pl_base for p in snap.positions if p.is_open), 0)
 
-    def test_trading_holds_crypto(self):
-        snap = sq_demo.snapshot(account="trading")
-        classes = {i.asset_class.name for i in snap.instruments}
+    def test_unlucky_is_underwater(self):
+        self.assertLess(self._upl("unlucky"), 0, "the unlucky persona should show a loss")
+
+    def test_bull_and_crypto_are_up(self):
+        self.assertGreater(self._upl("bull"), 0)
+        self.assertGreater(self._upl("crypto"), 0)
+
+    def test_crypto_holds_crypto(self):
+        classes = {i.asset_class.name for i in P.build_snapshot("crypto").instruments}
         self.assertIn("CRYPTO", classes)
 
 
-class TestDeterminism(unittest.TestCase):
-    def test_same_figures_forever(self):
-        for acct in sq_demo.accounts():
-            a = sq_demo.snapshot(account=acct, asof=ASOF)
-            b = sq_demo.snapshot(account=acct, asof=ASOF)
-            self.assertEqual([(p.instrument_id, p.quantity, p.value_base) for p in a.positions],
-                             [(p.instrument_id, p.quantity, p.value_base) for p in b.positions])
-            self.assertEqual(a.cash_balances[0].amount, b.cash_balances[0].amount)
-
-    def test_past_never_changes_as_walk_extends(self):
-        portfolio._walks.clear()
-        early = portfolio.price("demo:swrd", ASOF.date())
-        portfolio.price("demo:swrd", datetime.now(timezone.utc).date())
-        self.assertEqual(portfolio.price("demo:swrd", ASOF.date()), early)
+class TestPerPersonaDeterminism(unittest.TestCase):
+    def test_same_persona_same_figures(self):
+        # rotation is random, but a GIVEN persona renders identically (baked).
+        for name in P.PERSONAS:
+            a, b = P.build_snapshot(name, asof=ASOF), P.build_snapshot(name, asof=ASOF)
+            self.assertEqual([(p.instrument_id, p.value_base) for p in a.positions],
+                             [(p.instrument_id, p.value_base) for p in b.positions])
 
 
-# NOTE: the demo's "void-fill" behaviour (demo shows only when no real account is
-# connected; demo never appears in the connect menu) is the PLATFORM's decision and
-# is tested in the app repo:
-#   sciqnt/sciqnt → core/tests/test_void_fill.py :: TestDemoVoidFill
-# (the rule is `sq_platform.aggregated._apply_demo_void_fill`). It can't live here:
-# it reaches into app internals (P11 — a connector must not depend on the app) and
-# needs the demo to be a *discoverable* bundle, only true AFTER this conformance passes.
+# NOTE: void-fill (demo only while nothing real is connected) is the PLATFORM's
+# decision, tested in sciqnt/sciqnt → core/tests/test_void_fill.py.
 
 
 if __name__ == "__main__":

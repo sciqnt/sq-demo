@@ -1,24 +1,29 @@
 # sq-demo — findings & design notes
 
-Living log. This bundle is synthetic — its "quirks" are design decisions.
+Living log. The demo is curated transaction histories on REAL instruments,
+priced by the REAL engine — its "quirks" are design decisions.
 
-- **Determinism contract:** `random.Random(instrument_id)` walks from a
-  fixed anchor (2023-01-02); past values NEVER change as the series
-  extends to today. Screenshots taken months apart agree on history.
-- **Multi-currency (SUPERSEDES the old EUR-only rule, 2026-06-17):** three
-  accounts — `demo:growth` (EUR), `demo:usa` (USD), `demo:trading` (GBP) — to
-  showcase cross-account, cross-currency aggregation on the first-run screen.
-  Determinism story: **per-account figures stay seeded, deterministic, offline**
-  (the bundle itself still makes no network call). The cross-currency AGGREGATE
-  is computed by the PLATFORM's FX provider (ECB): point-in-time, so a fixed
-  `--asof` reproduces; the *"today"* top-line tracks live ECB reference rates
-  (cached after first fetch). Trade-off vs the original EUR-only promise: the
-  public *aggregate* is no longer byte-identical across days/offline — accepted
-  to demonstrate the headline feature. Pin fixed demo FX rates if byte-perfect
-  offline reproducibility of the aggregate is wanted back.
-- **Fictional tickers** deliberately resolve nowhere:
-  Yahoo/OpenFIGI misses are negative-cached and quiet; the 1D intraday
-  view falls back to the daily two-point series (honest degradation).
+- **Personas, not synthetic walks (REWRITE 2026-06-17, supersedes the old
+  EUR-only seeded-walk + 3-account designs):** five characters — 🐂 The Bull,
+  🐻 The Bear, 🦍 The Crypto Bro, 📉 The Unlucky, 🧘 The Boglehead — each a
+  transaction history on REAL tickers (AAPL, BTC-USD, VWRL.L, …). One is chosen at
+  RANDOM each launch (`random.choice`, process-lifetime) while no real account is
+  connected. The persona's *character* is its entry timing/choices; the live
+  market scores it.
+- **Live prices via the platform, baked fallback in the bundle:** the bundle holds
+  NO live prices and makes NO network call — it marks positions to a baked recent
+  level (`_NOW`) so it always renders + conformance runs offline. The PLATFORM's
+  market-data overlay (yahoo) then OVERRIDES each holding with the live price by
+  ticker; if the provider is throttled/offline, the baked value is the safe render
+  (honest degradation). So: real tickers, real engine, live P/L when reachable,
+  realistic P/L always. Cost basis is baked from realistic historical entry levels.
+- **Determinism trade-off:** a GIVEN persona renders identically (baked), but the
+  *figures move with the market* (live) and the *persona rotates* — the demo is no
+  longer the frozen "public figures" source. Conscious owner decision: a live
+  showcase of the real product beats frozen synthetic figures.
+- **Real tickers resolve for real:** unlike the old fictional SWRD/SQTC, these are
+  genuine Yahoo-resolvable symbols (`.L` = LSE, `-USD` = crypto pair). They're
+  illustrative example holdings, not endorsements (see `NOTICE.md`).
 - **Sign conventions** mirror sq-degiro's canonical adapter (BUY qty+/
   amount−, SELL qty−/amount+, income amount+, fee positive-magnitude).
 - **Weekends don't exist in demo-land** — the walk has a close every
